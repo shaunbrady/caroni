@@ -1,0 +1,118 @@
+edition = "2023";
+
+import "google/protobuf/timestamp.proto";
+
+package caroni;
+
+message Signature {
+  // X.509 style (or make that an enum type)
+  string signator_certificate = 1;
+  string payload_signature = 2;
+}
+
+// verification of JobType will likely be out of protobufs scope Maybe not need
+// this message type until we get remote job installation (if ever)
+// Note: getSupportedJobTypes?
+message JobType {
+  string job_type_name = 1;
+  // Do we include a version, or is that just part of job_type_name?
+
+  repeated string required_parameters = 2;  // KV, but keys only
+  repeated string optional_parameters = 3;  // KV, but keys only
+}
+
+message JobParameter {
+  string key = 1;
+  string value = 2;
+}
+
+message ResponseMethod {
+  enum ResponseType {
+    AMQP_HOST_PLUS_EXCHANGE = 0;
+    AMQP_TOPIC = 1;
+  }
+
+  string response_location = 1;
+  ResponseType response_location_type = 2 [default = AMQP_TOPIC];
+}
+
+message Site {
+  string site_identifier = 1;
+  bytes site_uuid = 2;
+  string site_contact = 3;
+}
+
+message JobFulfillmentRequest {
+  Signature signature = 1;
+  bytes request_uuid = 2;
+  string job_type_name = 3;
+  repeated JobParameter parameters = 4;
+  ResponseMethod response_method = 5;
+}
+
+message JobFulfillmentDecline {
+  Signature signature = 1;
+  bytes request_uuid = 2;
+  Site site = 3;
+  string decline_message = 4;
+}
+
+message JobFulfillmentOffer {
+  Signature signature = 1;
+  bytes request_uuid = 2;
+  bytes offer_uuid = 3;
+  Site site = 4;
+  string offer_message = 5;
+  google.protobuf.Timestamp expiration = 6;
+  ResponseMethod response_method = 7;
+}
+
+message JobFullfillmentOfferAccept {
+  Signature signature = 1;
+  bytes request_uuid = 2;
+  bytes offer_uuid = 3;
+  string accept_message = 4;
+  ResponseMethod response_method = 5; // This should be stored long term for unprompted JobStatusUpdates
+}
+
+message JobFullfillmentOfferReject {
+  Signature signature = 1;
+  bytes request_uuid = 2;
+  bytes offer_uuid = 3;
+  string reject_message = 4;
+}
+
+message JobQueued {
+  Signature signature = 1;
+  bytes job_uuid = 2;
+  bytes offer_uuid = 3;
+  ResponseMethod control_method = 4;
+}
+
+message JobStatusRequest {
+  Signature signature = 1;
+  bytes job_uuid = 2;
+  ResponseMethod response_method = 3;
+}
+
+enum JobStatus {
+  JOB_STATUS_QUEUED = 0;
+  JOB_STATUS_RUNNING = 1;
+  JOB_STATUS_COMPLETED = 2;
+  JOB_STATUS_FAILED = 3;
+  JOB_STATUS_PAUSED = 4;
+}
+
+message JobStatusUpdate {
+  Signature signature = 1;
+  bytes job_uuid = 2;
+  JobStatus job_status = 3;
+  string status_info = 4;
+}
+
+message JobKill {
+  Signature signature = 1;
+  bytes job_uuid = 2;
+  string kill_info = 3;
+  ResponseMethod response_method = 4;
+}
