@@ -1,0 +1,74 @@
+services:
+  wfserver:
+    image: caroniwf-wf_server
+    #entrypoint: ["sleep", "infinity"]
+    environment:
+      DATABASE_URL: postgres://myuser:mypassword@db:5432/mydb
+      AMQP_URL: amqp://user:pass@rabbitmq:5672/
+    depends_on:
+      - db
+      #- migrate
+      - rabbitmq
+
+  web:
+    image: caroniwf-django
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgres://myuser:mypassword@db:5432/mydb
+    depends_on:
+      - db
+      #- migrate
+#
+#  migrate:
+#    image: caroniwf-migrate
+#    environment:
+#      DATABASE_URL: postgres://myuser:mypassword@db:5432/mydb
+#    depends_on:
+#      - db
+#
+#  fixtures:
+#    image: caroniwf-fixtures
+#    environment:
+#      DATABASE_URL: postgres://myuser:mypassword@db:5432/mydb
+#    depends_on:
+#      - migrate
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: mydb
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    ports:
+      - "5672:5672"       # AMQP protocol
+      - "15672:15672"     # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: pass
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - default
+      - shared_net
+
+  sitestub:
+    image: caroniwf-sitestub
+    environment:
+      DATABASE_URL: postgres://myuser:mypassword@db:5432/mydb
+      AMQP_URL: amqp://user:pass@rabbitmq:5672/
+
+volumes:
+  pgdata:
+  rabbitmq_data:
+
+networks:
+  shared_net:
+    external: true

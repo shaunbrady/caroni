@@ -1,0 +1,153 @@
+edition = "2023";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/any.proto";
+
+package caroni;
+
+message Signature {
+  // X.509 style (or make that an enum type)
+  string signator_certificate = 1;
+  string payload_signature = 2;
+}
+
+message CaroniEnvelope {
+  Signature signature = 1;
+  google.protobuf.Any payload = 2;
+}
+
+// verification of JobType will likely be out of protobufs scope Maybe not need
+// this message type until we get remote job installation (if ever)
+// Note: getSupportedJobTypes?
+message JobType {
+  string job_type_name = 1;
+  // Do we include a version, or is that just part of job_type_name?
+
+  repeated string required_parameters = 2;  // KV, but keys only
+  repeated string optional_parameters = 3;  // KV, but keys only
+}
+
+message JobParameter {
+  string key = 1;
+  string value = 2;
+}
+
+message ResponseMethod {
+  enum ResponseType {
+    AMQP_HOST_PLUS_EXCHANGE = 0;
+    AMQP_TOPIC = 1;
+  }
+
+  string response_location = 1;
+  ResponseType response_location_type = 2 [default = AMQP_TOPIC];
+}
+
+message Site {
+  string site_identifier = 1;
+  bytes site_uuid = 2;
+  string site_contact = 3;
+}
+
+message JobFulfillmentRequest {  // Agent gets  wf.agent.fulfillment
+  // Probably needs a Site
+  Signature signature = 1;
+  bytes request_uuid = 2;
+  string job_type_name = 3;
+  repeated JobParameter parameters = 4;
+  //ResponseMethod decline_response_method = 5;
+  //ResponseMethod offer_response_method = 6;
+}
+
+message JobFulfillmentDecline {  // Server gets wf.manager.fulfillment
+  Signature signature = 1;
+  bytes request_uuid = 2;
+  Site site = 3;
+  string decline_message = 4;
+}
+
+message JobFulfillmentOffer {   // Server gets wf.manager.fulfillment
+  Signature signature = 1;
+  bytes request_uuid = 2;
+  bytes offer_uuid = 3;
+  Site site = 4;
+  string offer_message = 5;
+  google.protobuf.Timestamp expiration = 6;
+  //ResponseMethod accept_method = 7;
+  //ResponseMethod reject_method = 8;
+}
+
+message JobFulfillmentOfferAccept {  // Agent gets wf.agent.agent_uuid
+  Signature signature = 1;
+  bytes request_uuid = 2;
+  bytes offer_uuid = 3;
+  string accept_message = 4;
+  //ResponseMethod response_method = 5; // This should be stored long term for unprompted JobStatusUpdates
+}
+
+message JobFulfillmentOfferReject {  // Agent gets wf.agent.agent_uuid
+  Signature signature = 1;
+  bytes request_uuid = 2;
+  bytes offer_uuid = 3;
+  string reject_message = 4;
+}
+
+// TODO: Change to JobAccepted
+message JobQueued {  // Server gets wf.manager.fulfillment
+  Signature signature = 1;
+  bytes job_uuid = 2;
+  bytes offer_uuid = 3;
+  //ResponseMethod control_method = 4;
+}
+
+message JobStatusRequest {  // Agent gets wf.agent.agent_uuid
+  Signature signature = 1;
+  bytes job_uuid = 2;
+  //ResponseMethod response_method = 3; // Maybe here (see above comment)
+}
+
+enum JobStatus {
+  JOB_STATUS_UNSPECIFICED = 0;
+  JOB_STATUS_PENDING = 1;
+  JOB_STATUS_QUEUED = 2;
+  JOB_STATUS_RUNNING = 3;
+  JOB_STATUS_COMPLETED = 4;
+  JOB_STATUS_FAILED = 5;
+  JOB_STATUS_PAUSED = 6;
+}
+
+message JobStatusUpdate {  // Server gets wf.manager.fulfillment
+  Signature signature = 1;
+  bytes job_uuid = 2;
+  JobStatus job_status = 3;
+  string status_info = 4;
+  // Probably needs a timestamp
+}
+
+message JobKill {  // Agent gets wf.agent.agent_uuid
+  Signature signature = 1;
+  bytes job_uuid = 2;
+  string kill_info = 3;
+  //ResponseMethod response_method = 4;
+}
+
+message WorkFlowInput {
+  string key = 1;
+  string value = 2;
+}
+
+message WorkFlowCreate {  // Server gets wf.manager.fulfillment
+  Signature signature = 1;
+  string template_name = 2;
+  // How do we correlate?  Either Django creates the Workflow objects, we
+  // respond, we are given a user object.  That migth be it; give it a _unique_
+  // name.  Chance of race conditions
+  string wf_name = 3;
+  repeated WorkFlowInput inputs = 4;
+  //ResponseMethod response_method = 4;
+}
+
+message JobDataReady {
+  Signature signature = 1;
+  bytes job_uuid = 2;
+  repeated JobParameter parameters = 3;
+}

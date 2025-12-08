@@ -1,0 +1,504 @@
+[
+{
+  "model": "caroni.workflowtemplate",
+  "pk": "a75bbbd7-4436-40ec-81a6-3187bc7146f7",
+  "fields": {
+    "name": "test_simple",
+    "cwl_doc": "cwlVersion: v1.2\r\nclass: Workflow\r\n\r\n$namespaces:\r\n  caroni: https://caroni.example/cwl#\r\n\r\ninputs:\r\n  start_message:\r\n    type: string\r\n\r\noutputs:\r\n  result:\r\n    type: string\r\n    outputSource: step3/out\r\n\r\nsteps:\r\n  step1:\r\n    run:\r\n      class: CommandLineTool\r\n      hints:\r\n        caroni:CaroniRequirement:\r\n          CaroniJobName: foojob0\r\n\r\n      inputs:\r\n        message:\r\n          type: string\r\n\r\n      outputs:\r\n        jobout:\r\n          type: string\r\n          outputBinding:\r\n            glob: output.txt\r\n            loadContents: true\r\n            outputEval: $(self[0].contents.trim())\r\n\r\n      stdout: output.txt\r\n\r\n    in:\r\n      message: start_message\r\n    out: [jobout]\r\n\r\n  step2:\r\n    run:\r\n      class: CommandLineTool\r\n      hints:\r\n        caroni:CaroniRequirement:\r\n          CaroniJobName: foojob1\r\n\r\n      inputs:\r\n        text:\r\n          type: string\r\n\r\n      outputs:\r\n        outSB:\r\n          type: string\r\n          outputBinding:\r\n            glob: output.txt\r\n            loadContents: true\r\n            outputEval: $(self[0].contents.trim())\r\n\r\n      stdout: output.txt\r\n\r\n    in:\r\n      text: step1/jobout\r\n    out: [outSB]\r\n\r\n  step3:\r\n    run:\r\n      class: CommandLineTool\r\n      hints:\r\n        caroni:CaroniRequirement:\r\n          CaroniJobName: foojob2\r\n\r\n      inputs:\r\n        final_text:\r\n          type: string\r\n\r\n      outputs:\r\n        out:\r\n          type: string\r\n          outputBinding:\r\n            glob: output.txt\r\n            loadContents: true\r\n            outputEval: $(self[0].contents.trim())\r\n\r\n      stdout: output.txt\r\n\r\n    in:\r\n      final_text: step2/outSB\r\n    out: [out]"
+  }
+},
+{
+  "model": "caroni.workflowtemplate",
+  "pk": "c71f9d39-dff2-42f5-b89f-f2204efa45f1",
+  "fields": {
+    "name": "test_template",
+    "cwl_doc": "cwlVersion: v1.2\r\nclass: Workflow\r\n\r\n$namespaces:\r\n  caroni: https://caroni.example/cwl#\r\n\r\n\r\ninputs:\r\n  start_text:\r\n    type: string\r\n\r\noutputs:\r\n  result:\r\n    type: string\r\n    outputSource: finalize/out\r\n\r\nsteps:\r\n\r\n  # ─────────────────────────────────────────────\r\n  # Step 1: split input into two strings\r\n  # ─────────────────────────────────────────────\r\n  split:\r\n    run:\r\n      class: CommandLineTool\r\n      hints:\r\n        caroni:CaroniRequirement:\r\n          CaroniJobName: foojob\r\n      arguments:\r\n        - -c\r\n        - |\r\n          echo \"$1-A\" > a.txt\r\n          echo \"$1-B\" > b.txt\r\n      inputs:\r\n        text:\r\n          type: string\r\n          inputBinding:\r\n            position: 1\r\n      outputs:\r\n        outA:\r\n          type: string\r\n          outputBinding:\r\n            glob: a.txt\r\n            loadContents: true\r\n            outputEval: $(self[0].contents.trim())\r\n        outB:\r\n          type: string\r\n          outputBinding:\r\n            glob: b.txt\r\n            loadContents: true\r\n            outputEval: $(self[0].contents.trim())\r\n    in:\r\n      text: start_text\r\n    out: [outA, outB]\r\n\r\n  # ─────────────────────────────────────────────\r\n  # Step 2A: process branch A\r\n  # ─────────────────────────────────────────────\r\n  stepA:\r\n    run:\r\n      class: CommandLineTool\r\n      baseCommand: tr\r\n      arguments: [\"a-z\", \"A-Z\"]\r\n      inputs:\r\n        text:\r\n          type: string\r\n          inputBinding:\r\n            position: 1\r\n      outputs:\r\n        out:\r\n          type: string\r\n          outputBinding:\r\n            glob: stdout.txt\r\n            loadContents: true\r\n            outputEval: $(self[0].contents.trim())\r\n      stdout: stdout.txt\r\n    in:\r\n      text: split/outA\r\n    out: [out]\r\n\r\n  # ─────────────────────────────────────────────\r\n  # Step 2B: process branch B\r\n  # ─────────────────────────────────────────────\r\n  stepB:\r\n    run:\r\n      class: CommandLineTool\r\n      baseCommand: sed\r\n      arguments:\r\n        - \"s/$/ (processed)/\"\r\n      inputs:\r\n        text:\r\n          type: string\r\n          inputBinding:\r\n            position: 1\r\n      outputs:\r\n        out:\r\n          type: string\r\n          outputBinding:\r\n            glob: stdout.txt\r\n            loadContents: true\r\n            outputEval: $(self[0].contents.trim())\r\n      stdout: stdout.txt\r\n    in:\r\n      text: split/outB\r\n    out: [out]\r\n\r\n  # ─────────────────────────────────────────────\r\n  # Step 3: join both branches\r\n  # ─────────────────────────────────────────────\r\n  join:\r\n    run:\r\n      class: CommandLineTool\r\n      baseCommand: bash\r\n      arguments:\r\n        - -c\r\n        - |\r\n          echo \"$1 | $2\" > joined.txt\r\n      inputs:\r\n        a:\r\n          type: string\r\n          inputBinding:\r\n            position: 1\r\n        b:\r\n          type: string\r\n          inputBinding:\r\n            position: 2\r\n      outputs:\r\n        out:\r\n          type: string\r\n          outputBinding:\r\n            glob: joined.txt\r\n            loadContents: true\r\n            outputEval: $(self[0].contents.trim())\r\n    in:\r\n      a: stepA/out\r\n      b: stepB/out\r\n    out: [out]\r\n\r\n  # ─────────────────────────────────────────────\r\n  # Step 4: finalize\r\n  # ─────────────────────────────────────────────\r\n  finalize:\r\n    run:\r\n      class: CommandLineTool\r\n      baseCommand: echo\r\n      inputs:\r\n        text:\r\n          type: string\r\n      outputs:\r\n        out:\r\n          type: string\r\n          outputBinding:\r\n            glob: stdout.txt\r\n            loadContents: true\r\n            outputEval: $(self[0].contents.trim())\r\n      stdout: stdout.txt\r\n    in:\r\n      text: join/out\r\n    out: [out]"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 1,
+  "fields": {
+    "name": "Can add log entry",
+    "content_type": 1,
+    "codename": "add_logentry"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 2,
+  "fields": {
+    "name": "Can change log entry",
+    "content_type": 1,
+    "codename": "change_logentry"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 3,
+  "fields": {
+    "name": "Can delete log entry",
+    "content_type": 1,
+    "codename": "delete_logentry"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 4,
+  "fields": {
+    "name": "Can view log entry",
+    "content_type": 1,
+    "codename": "view_logentry"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 5,
+  "fields": {
+    "name": "Can add permission",
+    "content_type": 3,
+    "codename": "add_permission"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 6,
+  "fields": {
+    "name": "Can change permission",
+    "content_type": 3,
+    "codename": "change_permission"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 7,
+  "fields": {
+    "name": "Can delete permission",
+    "content_type": 3,
+    "codename": "delete_permission"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 8,
+  "fields": {
+    "name": "Can view permission",
+    "content_type": 3,
+    "codename": "view_permission"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 9,
+  "fields": {
+    "name": "Can add group",
+    "content_type": 2,
+    "codename": "add_group"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 10,
+  "fields": {
+    "name": "Can change group",
+    "content_type": 2,
+    "codename": "change_group"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 11,
+  "fields": {
+    "name": "Can delete group",
+    "content_type": 2,
+    "codename": "delete_group"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 12,
+  "fields": {
+    "name": "Can view group",
+    "content_type": 2,
+    "codename": "view_group"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 13,
+  "fields": {
+    "name": "Can add user",
+    "content_type": 4,
+    "codename": "add_user"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 14,
+  "fields": {
+    "name": "Can change user",
+    "content_type": 4,
+    "codename": "change_user"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 15,
+  "fields": {
+    "name": "Can delete user",
+    "content_type": 4,
+    "codename": "delete_user"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 16,
+  "fields": {
+    "name": "Can view user",
+    "content_type": 4,
+    "codename": "view_user"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 17,
+  "fields": {
+    "name": "Can add content type",
+    "content_type": 5,
+    "codename": "add_contenttype"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 18,
+  "fields": {
+    "name": "Can change content type",
+    "content_type": 5,
+    "codename": "change_contenttype"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 19,
+  "fields": {
+    "name": "Can delete content type",
+    "content_type": 5,
+    "codename": "delete_contenttype"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 20,
+  "fields": {
+    "name": "Can view content type",
+    "content_type": 5,
+    "codename": "view_contenttype"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 21,
+  "fields": {
+    "name": "Can add session",
+    "content_type": 6,
+    "codename": "add_session"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 22,
+  "fields": {
+    "name": "Can change session",
+    "content_type": 6,
+    "codename": "change_session"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 23,
+  "fields": {
+    "name": "Can delete session",
+    "content_type": 6,
+    "codename": "delete_session"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 24,
+  "fields": {
+    "name": "Can view session",
+    "content_type": 6,
+    "codename": "view_session"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 25,
+  "fields": {
+    "name": "Can add job",
+    "content_type": 7,
+    "codename": "add_job"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 26,
+  "fields": {
+    "name": "Can change job",
+    "content_type": 7,
+    "codename": "change_job"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 27,
+  "fields": {
+    "name": "Can delete job",
+    "content_type": 7,
+    "codename": "delete_job"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 28,
+  "fields": {
+    "name": "Can view job",
+    "content_type": 7,
+    "codename": "view_job"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 29,
+  "fields": {
+    "name": "Can add job request",
+    "content_type": 9,
+    "codename": "add_jobrequest"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 30,
+  "fields": {
+    "name": "Can change job request",
+    "content_type": 9,
+    "codename": "change_jobrequest"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 31,
+  "fields": {
+    "name": "Can delete job request",
+    "content_type": 9,
+    "codename": "delete_jobrequest"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 32,
+  "fields": {
+    "name": "Can view job request",
+    "content_type": 9,
+    "codename": "view_jobrequest"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 33,
+  "fields": {
+    "name": "Can add workflow",
+    "content_type": 10,
+    "codename": "add_workflow"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 34,
+  "fields": {
+    "name": "Can change workflow",
+    "content_type": 10,
+    "codename": "change_workflow"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 35,
+  "fields": {
+    "name": "Can delete workflow",
+    "content_type": 10,
+    "codename": "delete_workflow"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 36,
+  "fields": {
+    "name": "Can view workflow",
+    "content_type": 10,
+    "codename": "view_workflow"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 37,
+  "fields": {
+    "name": "Can add workflow template",
+    "content_type": 12,
+    "codename": "add_workflowtemplate"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 38,
+  "fields": {
+    "name": "Can change workflow template",
+    "content_type": 12,
+    "codename": "change_workflowtemplate"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 39,
+  "fields": {
+    "name": "Can delete workflow template",
+    "content_type": 12,
+    "codename": "delete_workflowtemplate"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 40,
+  "fields": {
+    "name": "Can view workflow template",
+    "content_type": 12,
+    "codename": "view_workflowtemplate"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 41,
+  "fields": {
+    "name": "Can add job offer",
+    "content_type": 8,
+    "codename": "add_joboffer"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 42,
+  "fields": {
+    "name": "Can change job offer",
+    "content_type": 8,
+    "codename": "change_joboffer"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 43,
+  "fields": {
+    "name": "Can delete job offer",
+    "content_type": 8,
+    "codename": "delete_joboffer"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 44,
+  "fields": {
+    "name": "Can view job offer",
+    "content_type": 8,
+    "codename": "view_joboffer"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 45,
+  "fields": {
+    "name": "Can add workflow step",
+    "content_type": 11,
+    "codename": "add_workflowstep"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 46,
+  "fields": {
+    "name": "Can change workflow step",
+    "content_type": 11,
+    "codename": "change_workflowstep"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 47,
+  "fields": {
+    "name": "Can delete workflow step",
+    "content_type": 11,
+    "codename": "delete_workflowstep"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 48,
+  "fields": {
+    "name": "Can view workflow step",
+    "content_type": 11,
+    "codename": "view_workflowstep"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 49,
+  "fields": {
+    "name": "Can add workflow dataflow",
+    "content_type": 13,
+    "codename": "add_workflowdataflow"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 50,
+  "fields": {
+    "name": "Can change workflow dataflow",
+    "content_type": 13,
+    "codename": "change_workflowdataflow"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 51,
+  "fields": {
+    "name": "Can delete workflow dataflow",
+    "content_type": 13,
+    "codename": "delete_workflowdataflow"
+  }
+},
+{
+  "model": "auth.permission",
+  "pk": 52,
+  "fields": {
+    "name": "Can view workflow dataflow",
+    "content_type": 13,
+    "codename": "view_workflowdataflow"
+  }
+},
+{
+  "model": "auth.user",
+  "pk": 1,
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$MZ2zIVGT2ookEu8rxwyTHa$kprsScYo5SYVRBps9+n2iKrghGHfjR1HTBfqtBNu7v8=",
+    "last_login": "2026-01-10T02:52:53.653Z",
+    "is_superuser": true,
+    "username": "admin",
+    "first_name": "",
+    "last_name": "",
+    "email": "test@test.com",
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2025-12-21T04:56:59.048Z",
+    "groups": [],
+    "user_permissions": []
+  }
+}
+]
