@@ -32,7 +32,7 @@ django.setup()
 # ... and now we can do Django!
 from caroni.models import (
     Workflow, WorkflowTemplate, WorkflowStep, Job, JobRequest, JobOffer,
-    WorkflowDataflow)
+    WorkflowDataflow, WorkflowSite)
 
 from django.db import transaction
 
@@ -92,9 +92,6 @@ def mem_resolver(loader, uri):
 
 caroni_exchange = "caroni_exchange"
 
-u = uuid.uuid4()
-manager_id = base64.urlsafe_b64encode(u.bytes).rstrip(b"=").decode()
-
 if 'AMQP_URL' in os.environ:
     amqp_url = os.environ["AMQP_URL"]
     print(f"AMQP_URL is {amqp_url}")
@@ -118,8 +115,19 @@ channel = connection.channel()
 channel.exchange_declare(caroni_exchange, exchange_type="topic")
 
 def get_manager_topic():
-    #return f"wf.manager.{manager_id}"
-    return f"wf.manager.uuid4you"
+    site_count = WorkflowSite.objects.count()
+    if site_count == 0:
+        this_site = WorkflowSite.objects.create()
+    elif site_count == 1:
+        this_site = WorkflowSite.objects.all().first()
+    else:
+        raise RuntimeError(
+            "More than one WorkflowSite found; This is unsupported.")
+
+    manager_id = base64.urlsafe_b64encode(
+        this_site.uuid.bytes).rstrip(b"=").decode()
+
+    return f"wf.manager.{manager_id}"
 
 ### Split in to common TODO
 def sign_and_seal(msg):
