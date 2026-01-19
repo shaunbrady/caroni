@@ -9,6 +9,8 @@ forget? What about agent recovery? We did part of this in manager.
 * Implement queuing "plugin"; a way to control if we queue or submit and watch
 an external queuing solution (ex: slurm)
 
+* Define behavior for when receiving data again for a given input
+
 * Move from print debugging
 
 * Migrate Django installation to an installable app
