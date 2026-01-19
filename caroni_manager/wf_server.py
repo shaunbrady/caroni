@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
 import os
-import pika
 import uuid
 import base64
 import textwrap
 from time import sleep
 from urllib.parse import urljoin
+
+import pika
 
 from google.protobuf.any_pb2 import Any
 
