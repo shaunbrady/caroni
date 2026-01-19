@@ -91,14 +91,16 @@ class Job(models.Model):
 
     def deliver_input(self, name="", value=""):
         an_input = self.inputs.get(name=name)
-        an_input.value=value
-        an_input.deliver()
-        an_input.save()
-        # FIXME For now, we're forcing this right to available, but we need an
-        # internal call back, or timer loop to "move" data and confirm it's
-        # available.
-        an_input.mark_available()
-        an_input.save()
+        # Ignore any inputs we already received
+        if an_input.state != "available":
+            an_input.value=value
+            an_input.deliver()
+            an_input.save()
+            # FIXME For now, we're forcing this right to available, but we need an
+            # internal call back, or timer loop to "move" data and confirm it's
+            # available.
+            an_input.mark_available()
+            an_input.save()
         
         # Do we have all the inputs?  If so, go ahead and queue.  This will
         # almost assuredly be more complicated in the future, given the
