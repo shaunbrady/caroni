@@ -4,6 +4,13 @@ from django.db import models
 from django_fsm import FSMField, transition
 
 
+class WorkflowSite(models.Model):
+    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    name = models.CharField(max_length=255, default="")
+
+    def __str__(self):
+        return f"{self.name} - {self.uuid}"
+
 class WorkflowTemplate(models.Model):
     uuid = models.UUIDField(primary_key=True, default=uuid.uuid4)
     name = models.CharField(max_length=255, default="")
