@@ -8,6 +8,8 @@ import base64
 import uuid
 from time import sleep
 
+import pika
+
 from google.protobuf.timestamp_pb2 import Timestamp
 from google.protobuf.any_pb2 import Any
 from google.protobuf.json_format import MessageToDict
@@ -18,7 +20,15 @@ from gen.workflow_messages_pb2 import (
     WorkFlowCreate,
     WorkFlowInput)
 
-import pika
+# django melding magic; look away human
+import django
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "caroni.settings")
+django.setup()
+
+# ... and now we can do Django!
+from caroni.models import (
+    Workflow, WorkflowTemplate, WorkflowStep, Job, JobRequest, JobOffer,
+    WorkflowDataflow, WorkflowSite)
 
 caroni_exchange = 'caroni_exchange'
 
@@ -30,8 +40,21 @@ db = {
     'jobs': {}
 }
 
-# FILLME
-dest_topic = "wf.manager.uuid4you"
+def get_dest_manager_topic():
+    site_count = WorkflowSite.objects.count()
+    if site_count == 0:
+        this_site = WorkflowSite.objects.create()
+    elif site_count == 1:
+        this_site = WorkflowSite.objects.all().first()
+    else:
+        raise RuntimeError(
+            "More than one WorkflowSite found; This is unsupported.")
+
+    manager_id = base64.urlsafe_b64encode(
+        this_site.uuid.bytes).rstrip(b"=").decode()
+
+    return f"wf.manager.{manager_id}"
+
 
 def get_agent_topic():
     return f"wf.agent.{agent_id}"
@@ -89,7 +112,7 @@ wf_create = WorkFlowCreate(
 channel.basic_publish(
     exchange=caroni_exchange,
     properties=pika.BasicProperties(reply_to=get_agent_topic()),
-    routing_key=dest_topic,
+    routing_key=get_dest_manager_topic(),
     body=sign_and_seal(wf_create).SerializeToString())
 
 
