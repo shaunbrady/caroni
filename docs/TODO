@@ -1,12 +1,16 @@
 # Roughly in priority order
 
-2) Fail a job if the JSON does not parse, as well as other execution failure
-modes
+* Make WOrkflowSteps and Workflows cascade failures
 
-3) Design and implement OPTIONAL service uuid storage; maybe we mandate that
+* Design and implement OPTIONAL service uuid storage; maybe we mandate that
 this is always passed in, and random otherwise.  Managers remember, agents
-forget? What about agent recovery?
+forget? What about agent recovery? We did part of this in manager.
 
-4) Migrate Django installation to an installable app
+* Implement queuing "plugin"; a way to control if we queue or submit and watch
+an external queuing solution (ex: slurm)
 
-5) Make "caroni_exchange" a setting
+* Move from print debugging
+
+* Migrate Django installation to an installable app
+
+* Make "caroni_exchange" a setting
