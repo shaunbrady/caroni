@@ -94,11 +94,6 @@ caroni_exchange = "caroni_exchange"
 u = uuid.uuid4()
 manager_id = base64.urlsafe_b64encode(u.bytes).rstrip(b"=").decode()
 
-db = {
-    'requests' : {},
-    'jobs': {}
-}
-
 if 'AMQP_URL' in os.environ:
     amqp_url = os.environ["AMQP_URL"]
     print(f"AMQP_URL is {amqp_url}")
@@ -323,9 +318,6 @@ def workflow_create(wfc, method=None, properties=None):
     ctx.resolver = mem_resolver
     ctx.construct_tool_object = default_make_tool
     workflow_ast = load_tool("mem://workflow.cwl", loadingContext=ctx)
-    # TODO, this is how to get the outputs of the workflow
-    #print("OUTPUTS")
-    #print(list(workflow_ast.tool['outputs']))
 
     for step in workflow_ast.steps:
         step_name = step.id.split("#")[1] # 0 is namespace

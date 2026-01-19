@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from random import uniform, choices
-import string
 from datetime import datetime, timezone, timedelta
 import base64
 import json
@@ -12,7 +11,6 @@ from time import sleep
 
 from google.protobuf.timestamp_pb2 import Timestamp
 from google.protobuf.any_pb2 import Any
-from google.protobuf.json_format import MessageToDict
 
 from gen.workflow_messages_pb2 import (
     JobStatus, JobFulfillmentRequest, JobFulfillmentDecline,
@@ -290,8 +288,6 @@ while True:
 
         for output in first_job.outputs.all():
             # Check here for output.available else fail?
-            #randval = ''.join(
-            #    choices(string.ascii_letters + string.digits, k=6))
             jp = JobParameter(
                 key=output.name,
                 value=output.value)
