@@ -54,13 +54,15 @@ def enum_given_fsm(fsm_value):
 def fsm_given_enum(enum_value):
     return JobStatus.Name(enum_value).split("_")[2] # JOB_STATUS_RUNNING
 
-def report_job_status(job):
+def report_job_status(
+        job,
+        status_info="This job is doing something different now."):
     # Takes ORM Job and sends JobStatusUpdate
     job_status_update = JobStatusUpdate(
         signature=Signature(),
         job_uuid=job.uuid.bytes,
         job_status=enum_given_fsm(job.state),
-        status_info="This job is now in doing something different")
+        status_info=status_info)
 
     channel.basic_publish(
         exchange=caroni_exchange,
