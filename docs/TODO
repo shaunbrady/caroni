@@ -1,0 +1,11 @@
+# Roughly in priority order
+
+1) Decide how WF client find WF manager AND/or if there is a static topic they
+can post to like agent.fulfillment
+
+2) Fail a job if the JSON does not parse, as well as other execution failure
+modes
+
+3) Design and implement OPTIONAL service uuid storage; maybe we mandate that
+this is always passed in, and random otherwise.  Managers remember, agents
+forget? What about agent recovery?
