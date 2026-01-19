@@ -272,12 +272,17 @@ while True:
         try:
             job_outs = json.loads(result.stdout)
         except Exception as e:
-            # We could send a fail status here
-            sleep(uniform(6, 10))
+            # We won't have any job_outs to compare to job.outputs (and
+            # ultimately send to manager). This doesn't obviate "the spec" from
+            # sending partial JobData while the job is running. More a comment
+            # on this "reference implementation".
+            first_job.fail()
+            first_job.save()
+            report_job_status(first_job, "Agent could not parse job results.")
             print("JSON failed")
             print(f"STDOUT is: {result.stdout}" )
             print(f"STDERR is: {result.stderr}" )
-            job_outs = {}
+            continue
 
         for k, v in job_outs.items():
             first_job.deliver_output(name=k, value=v)
