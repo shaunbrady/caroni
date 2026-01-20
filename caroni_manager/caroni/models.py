@@ -216,11 +216,11 @@ class WorkflowStep(models.Model):
     step_name = models.CharField(max_length=255, default="")
     job_name = models.CharField(max_length=255, default="")
     job_kvs = models.JSONField(default=dict)
+    attempts = models.IntegerField(default=0)
+    max_attempts = models.IntegerField(default=5)
 
-
-    # Note: This looks like we could get stuck in a cycling
-    # fulfilling->fulfilled->running->error(not a state)->fulfilling.
-    # We need to consider time outs.
+    def can_fulfill_again(self):
+        return self.attempts < self.max_attempts
 
     # created, fulfilling, fulfilled, running, completed, failed
     @transition(field=state, source="created", target="fulfilling")
