@@ -231,16 +231,15 @@ class WorkflowStep(models.Model):
     def mark_fulfilled(self):
         pass
 
-    # Note: the following two transitions may turn out to be one (with a list),
-    # but we keep them separate to observe that.  We might take "stall" from
-    # Workflow above.
-    @transition(field=state, source="fulfilled", target="fulfilling")
+    @transition(field=state,
+        source=["fulfilled", "running"],
+        target="fulfilling",
+        conditions=[can_fulfill_again])
     def fulfill_again(self):
-        pass
-
-    @transition(field=state, source="running", target="fulfilling")
-    def fulfill_again_from_running(self):
-        pass
+        # TODO switch this to counts of JR if the condition is ===.
+        # It could be that we want something more complex.
+        self.attempts += 1
+        self.save()
 
     @transition(field=state, source="fulfilled", target="running")
     def run(self):
