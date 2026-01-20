@@ -36,7 +36,7 @@ class Workflow(models.Model):
     def run(self):
         pass
 
-    @transition(field=state, source="running", target="stalled")
+    @transition(field=state, source=["running", "stalled"], target="stalled")
     def stall(self):
         pass
 
@@ -279,7 +279,10 @@ class WorkflowDataflow(models.Model):
         null=True, # null = wf output
         related_name="dst_dataflows")
 
-    @transition(field=state, source="awaiting", target="delivered")
+    # Can be delivered more than once, if Job is refulfilled
+    @transition(field=state,
+        source=["awaiting", "delivered"],
+        target="delivered")
     def deliver(self):
         pass
 
@@ -318,6 +321,8 @@ class JobRequest(models.Model):
     def mark_fulfilled(self):
         pass
 
+    # Note: This might be a deadend, more confusing (to the agents) than it's
+    # worth.
     @transition(field=state, source="fulfilled", target="fulfilling")
     def fulfill_again(self):
         pass
