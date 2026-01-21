@@ -169,6 +169,23 @@ class Workflow(models.Model):
             self.complete()
             self.save()
 
+    # TODO See above "Generalize ...." comment
+    def check_recover_stalled(self):
+        """
+        If the Workflow is stalled, all steps have left stalled ("fulfilled",
+        "running", "completed"), we can go back to "running"
+        """
+        recovered = True
+        if self.state == "stalled":
+            for wf in self.workflow_steps.all():
+                if wf.state not in ["fulfilled","running", "completed"]:
+                    recovered = False
+                    break
+            if recovered:
+                self.run()
+                self.save()
+
+
     def __str__(self):
         return f"{self.uuid} - {self.state}"
     

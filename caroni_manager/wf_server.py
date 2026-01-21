@@ -35,6 +35,7 @@ from caroni.models import (
     WorkflowDataflow, WorkflowSite)
 
 from django.db import transaction
+from django_fsm import TransitionNotAllowed
 
 
 class InMemoryFetcher(Fetcher):
@@ -246,6 +247,7 @@ def job_queued_process(job_queued, method=None, properties=None):
     wf_step.current_job = job
     wf_step.mark_fulfilled()
     wf_step.save()
+    wf_step.workflow.check_recover_stalled()
 
     # should this be scheduled for later?
     jsr = JobStatusRequest(
@@ -261,9 +263,16 @@ def job_queued_process(job_queued, method=None, properties=None):
     if wf_step.workflow.clear_to_send_dataflows():
         # We should be on the last job being accepted. The Workflow as a whole
         # should be good to go; send Dataflow messages.
+        #
+        # This may also be called on a refulfill
         print("We're ready to send dataflows")
+
+        # Send Workflow->first_job DFs
+        # The added state will cause retransmissions to NOT fire off first_jobs
+        # again. I'd rather make this logic a bit more concrete, but I'm waiting
+        # for cases to reveal themselves.
         wf_dfs = WorkflowDataflow.objects.filter(
-            workflow=wf_step.workflow, wfstep_src=None)
+            workflow=wf_step.workflow, wfstep_src=None, state="awaiting")
         for df in wf_dfs:
 
             jp_key = df.dst_input_name
@@ -277,6 +286,21 @@ def job_queued_process(job_queued, method=None, properties=None):
 
             df.deliver(value=jp_value)
             df.save()
+
+    # Retransmit any DFs previously delivered for this Workflow (if the
+    # following filter() returns anything, this new job is almost assuredly a
+    # retry for a failed job)
+    wf_dfs = WorkflowDataflow.objects.filter(
+        wfstep_dst=wf_step, state="delivered")
+    for df in wf_dfs:
+        jp_key = df.dst_input_name
+        jp_value = df.value
+        job_uuid = df.wfstep_dst.current_job.uuid.bytes
+        job_routing_key = df.wfstep_dst.current_job.reply_to
+
+        send_job_data_ready(
+            jp_key=jp_key, jp_value=jp_value, job_uuid=job_uuid,
+            job_routing_key=job_routing_key)
 
 def job_status_update_process(job_status_update, method=None, properties=None):
     print(f" [x] Received JobStatusUpdate for : {uuid.UUID(bytes=job_status_update.job_uuid)}")
@@ -307,8 +331,23 @@ def job_status_update_process(job_status_update, method=None, properties=None):
         if wf.state == "running":
             wf.check_complete()
     elif(job_status_update.job_status == JobStatus.JOB_STATUS_FAILED):
+        wfs = WorkflowStep.objects.get(current_job=job)
+        wf = wfs.workflow
         job.fail()
         job.save()
+        try:
+            wfs.fulfill_again()
+            print(f"Job {job.uuid} failed, retrying")
+            create_send_job_request(wfs)
+            wfs.save()
+            wf.stall()
+            wf.save()
+        except TransitionNotAllowed:
+            print(f"Job {job.uuid} failed, failing Workflow and Step")
+            wfs.fail()
+            wfs.save()
+            wf.fail()
+            wf.save()
     elif(job_status_update.job_status == JobStatus.JOB_STATUS_PENDING):
         pass #NOOP as we should already be in pending (or beyond)
     else:
