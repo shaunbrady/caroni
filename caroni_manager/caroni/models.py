@@ -219,7 +219,7 @@ class WorkflowStep(models.Model):
     max_attempts = models.IntegerField(default=5)
 
     def can_fulfill_again(self):
-        return self.attempts < self.max_attempts
+        return self.attempts < self.max_attempts - 1
 
     # created, fulfilling, fulfilled, running, completed, failed
     @transition(field=state, source="created", target="fulfilling")
