@@ -13,4 +13,9 @@ an external queuing solution (ex: slurm)
 
 * Migrate Django installation to an installable app
 
+* Make data-retransmits consistent (ignore resends, or send them on)
+
+* Do something with signatures.  Example: Did we get DataReady from the person
+* we expect?
+
 * Make "caroni_exchange" a setting
