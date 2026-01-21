@@ -275,7 +275,7 @@ def job_queued_process(job_queued, method=None, properties=None):
                 jp_key=jp_key, jp_value=jp_value, job_uuid=job_uuid,
                 job_routing_key=job_routing_key)
 
-            df.deliver()
+            df.deliver(value=jp_value)
             df.save()
 
 def job_status_update_process(job_status_update, method=None, properties=None):
@@ -412,7 +412,7 @@ def job_data_ready_process(jdr, method=None, properties=None):
                     wfstep_src.workflow.workflow_outputs = wfouts
                     wfstep_src.workflow.save()
 
-            df.deliver()
+            df.deliver(value=params_recv[df.src_output_name])
             df.save()
 
 

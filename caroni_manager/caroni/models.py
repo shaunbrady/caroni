@@ -267,6 +267,7 @@ class WorkflowDataflow(models.Model):
     state = FSMField(default="awaiting", protected=True)
     src_output_name = models.CharField(max_length=255, default="")
     dst_input_name = models.CharField(max_length=255, default="")
+    value = models.CharField(max_length=255, default="")
     wfstep_src = models.ForeignKey(
         WorkflowStep,
         on_delete=models.CASCADE,
@@ -282,8 +283,11 @@ class WorkflowDataflow(models.Model):
     @transition(field=state,
         source=["awaiting", "delivered"],
         target="delivered")
-    def deliver(self):
-        pass
+    def deliver(self, value=None):
+        if value:
+            self.value=value
+            self.save()
+
 
     def __str__(self):
         if self.wfstep_dst:
