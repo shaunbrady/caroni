@@ -314,6 +314,28 @@ def job_status_update_process(job_status_update, method=None, properties=None):
     else:
         print(f"JobStatusUpdate send unknown status {job_status_update.job_status}")
 
+def create_send_job_request(step):
+    """
+    Take a WorkFlowStep, create the JobRequest object, and send off the message
+    to fulfilling agents.
+    """
+    jr = step.create_job_request() # TODO default state is fulfilling?
+    jr.fulfill()
+    jr.save() # TODO Do we have the JR update the WFS?
+
+    jfr = JobFulfillmentRequest(
+        signature=Signature(),
+        request_uuid=jr.uuid.bytes,
+        job_type_name=step.job_name,
+        parameters=workflow_kvs_to_proto_parameters(step.job_kvs))
+
+    print("Sending to wf.agent.fulfillment")
+    channel.basic_publish(
+        exchange=caroni_exchange,
+        properties=pika.BasicProperties(reply_to=get_manager_topic()),
+        routing_key='wf.agent.fulfillment',
+        body=sign_and_seal(jfr).SerializeToString())
+
 def workflow_create(wfc, method=None, properties=None):
     print(f" [x] Received WorkFlowCreate for : {wfc.template_name}")
 
@@ -355,24 +377,9 @@ def workflow_create(wfc, method=None, properties=None):
     # after we know DAG (we'll have the opportunity to calculate a time estimate at
     # this point, which I speculate we'll need in the future).
     for step in WorkflowStep.objects.filter(workflow=wf):
-        jr = step.create_job_request() # TODO default state is fulfilling?
-        jr.fulfill()
-        jr.save() # TODO Do we have the JR update the WFS?
+        create_send_job_request(step)
         step.fulfill()
         step.save()
-
-        jfr = JobFulfillmentRequest(
-            signature=Signature(),
-            request_uuid=jr.uuid.bytes,
-            job_type_name=step.job_name,
-            parameters=workflow_kvs_to_proto_parameters(step.job_kvs))
-
-        print("Sending to wf.agent.fulfillment")
-        channel.basic_publish(
-            exchange=caroni_exchange,
-            properties=pika.BasicProperties(reply_to=get_manager_topic()),
-            routing_key='wf.agent.fulfillment',
-            body=sign_and_seal(jfr).SerializeToString())
 
 def job_data_ready_process(jdr, method=None, properties=None):
     print(f" [x] Received JobDataReady for : {to_uuid_obj(jdr.job_uuid)}")
