@@ -32,16 +32,15 @@ class Workflow(models.Model):
     def initialize(self):
         pass
 
-    @transition(field=state, source="initalizing", target="running")
+    @transition(
+        field=state,
+        source=["stalled", "initalizing"],
+        target="running")
     def run(self):
         pass
 
     @transition(field=state, source=["running", "stalled"], target="stalled")
     def stall(self):
-        pass
-
-    @transition(field=state, source="stalled", target="running")
-    def run_from_stalled(self):
         pass
 
     @transition(field=state, source="running", target="completed")
