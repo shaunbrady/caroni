@@ -1,7 +1,5 @@
 # Roughly in priority order
 
-* Make WOrkflowSteps and Workflows cascade failures
-
 * Design and implement OPTIONAL service uuid storage; maybe we mandate that
 this is always passed in, and random otherwise.  Managers remember, agents
 forget? What about agent recovery? We did part of this in manager.
