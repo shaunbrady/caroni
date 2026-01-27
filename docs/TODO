@@ -7,6 +7,9 @@ forget? What about agent recovery? We did part of this in manager.
 * Implement queuing "plugin"; a way to control if we queue or submit and watch
 an external queuing solution (ex: slurm)
 
+* Implement data get or other callback for how to react to receiving a DataFlow;
+stop short circuiting pending and queued by just "having" all of the DFs.
+
 * Move from print debugging
 
 * Migrate Django installation to an installable app
@@ -14,6 +17,6 @@ an external queuing solution (ex: slurm)
 * Make data-retransmits consistent (ignore resends, or send them on)
 
 * Do something with signatures.  Example: Did we get DataReady from the person
-* we expect?
+  we expect?
 
 * Make "caroni_exchange" a setting
