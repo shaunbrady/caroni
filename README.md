@@ -22,6 +22,8 @@ set of workflows.
 When sites don't necessarily know about each other, but have to share a
 resource, caroni is there for that.
 
+See our [Design Doc](docs/DESIGN.md)
+
 ## How
 
 caroni uses protobuf for managers and agents to communicate.
