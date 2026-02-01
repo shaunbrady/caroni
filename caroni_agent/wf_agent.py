@@ -15,7 +15,7 @@ from google.protobuf.any_pb2 import Any
 from gen.workflow_messages_pb2 import (
     JobStatus, JobFulfillmentRequest, JobFulfillmentDecline,
     JobFulfillmentOffer, Signature, Site, CaroniEnvelope,
-    JobFulfillmentOfferAccept, JobQueued, JobStatusUpdate, JobStatusRequest,
+    JobFulfillmentOfferAccept, JobAccepted, JobStatusUpdate, JobStatusRequest,
     JobDataAvailable, JobParameter)
 
 import pika
@@ -136,7 +136,7 @@ def jfoa_process(jfoa, method=None, properties=None):
     job.create_outputs_from_type()
     jo.delete()
     
-    job_queued = JobQueued(
+    job_accepted = JobAccepted(
         signature=Signature(),
         job_uuid=job.uuid.bytes,
         offer_uuid=jfoa.offer_uuid)
@@ -145,9 +145,9 @@ def jfoa_process(jfoa, method=None, properties=None):
         exchange=caroni_exchange,
         properties=pika.BasicProperties(reply_to=get_agent_topic()),
         routing_key=properties.reply_to,
-        body=sign_and_seal(job_queued).SerializeToString())
+        body=sign_and_seal(job_accepted).SerializeToString())
 
-    print(f"Sent JobQueued of {job.uuid} to offer {uuid.UUID(bytes=jfoa.offer_uuid)}")
+    print(f"Sent JobAccepted of {job.uuid} to offer {uuid.UUID(bytes=jfoa.offer_uuid)}")
 
 def jsr_process(jsr, method=None, properties=None):
     job = Job.objects.get(uuid=uuid.UUID(bytes=jsr.job_uuid))

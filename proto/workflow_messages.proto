@@ -91,8 +91,7 @@ message JobFulfillmentOfferReject {  // Agent gets wf.agent.agent_uuid
   string reject_message = 4;
 }
 
-// TODO: Change to JobAccepted
-message JobQueued {  // Server gets wf.manager.fulfillment
+message JobAccepted {  // Server gets wf.manager.fulfillment
   Signature signature = 1;
   bytes job_uuid = 2;
   bytes offer_uuid = 3;

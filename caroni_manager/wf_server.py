@@ -20,7 +20,7 @@ from schema_salad.fetcher import Fetcher
 from gen.workflow_messages_pb2 import (
     JobStatus, JobFulfillmentRequest, Signature, JobParameter,
     JobFulfillmentDecline, JobFulfillmentOffer, JobFulfillmentOfferAccept,
-    JobFulfillmentOfferReject, CaroniEnvelope, JobQueued, JobStatusUpdate,
+    JobFulfillmentOfferReject, CaroniEnvelope, JobAccepted, JobStatusUpdate,
     JobStatusRequest, WorkFlowCreate, JobDataAvailable)
 
 
@@ -236,13 +236,13 @@ def jfr_offer_process(jfo, method=None, properties=None):
     jo.save()
 
 
-def job_queued_process(job_queued, method=None, properties=None):
-    print(f" [x] Received JobQueued for : {uuid.UUID(bytes=job_queued.job_uuid)}")
+def job_accepted_process(job_accepted, method=None, properties=None):
+    print(f" [x] Received JobAccepted for : {uuid.UUID(bytes=job_accepted.job_uuid)}")
 
-    jo = JobOffer.objects.get(uuid=uuid.UUID(bytes=job_queued.offer_uuid))
+    jo = JobOffer.objects.get(uuid=uuid.UUID(bytes=job_accepted.offer_uuid))
     wf_step = jo.job_request.workflow_step
     job = Job.objects.create(
-        uuid=uuid.UUID(bytes=job_queued.job_uuid),
+        uuid=uuid.UUID(bytes=job_accepted.job_uuid),
         reply_to=properties.reply_to)
     wf_step.current_job = job
     wf_step.mark_fulfilled()
@@ -252,7 +252,7 @@ def job_queued_process(job_queued, method=None, properties=None):
     # should this be scheduled for later?
     jsr = JobStatusRequest(
         signature=Signature(),
-        job_uuid=job_queued.job_uuid)
+        job_uuid=job_accepted.job_uuid)
 
     channel.basic_publish(
         exchange=caroni_exchange,
@@ -458,7 +458,7 @@ def job_data_available_process(jda, method=None, properties=None):
 callback_routes = {
     JobFulfillmentDecline: jfr_decline_process,
     JobFulfillmentOffer: jfr_offer_process,
-    JobQueued: job_queued_process,
+    JobAccepted: job_accepted_process,
     JobStatusUpdate: job_status_update_process,
     WorkFlowCreate: workflow_create,
     JobDataAvailable: job_data_available_process,
