@@ -21,7 +21,7 @@ from gen.workflow_messages_pb2 import (
     JobStatus, JobFulfillmentRequest, Signature, JobParameter,
     JobFulfillmentDecline, JobFulfillmentOffer, JobFulfillmentOfferAccept,
     JobFulfillmentOfferReject, CaroniEnvelope, JobQueued, JobStatusUpdate,
-    JobStatusRequest, WorkFlowCreate, JobDataReady)
+    JobStatusRequest, WorkFlowCreate, JobDataAvailable)
 
 
 # django melding magic; look away human
@@ -163,14 +163,14 @@ def workflow_kvs_to_proto_parameters(kvs=None):
 
     return ret
 
-def send_job_data_ready(
+def send_job_data_available(
     jp_key=None, jp_value=None, job_uuid=None, job_routing_key=None):
-    # TODO could make a multi-send version as JobDataReady takes parameters as a
+    # TODO could make a multi-send version as JobDataAvailable takes parameters as a
     # list.
     jp = JobParameter(
         key=jp_key,
         value=jp_value)
-    jdr = JobDataReady(
+    jda = JobDataAvailable(
         signature=Signature(),
         job_uuid=job_uuid,
         parameters=[jp])
@@ -178,7 +178,7 @@ def send_job_data_ready(
         exchange=caroni_exchange,
         properties=pika.BasicProperties(reply_to=get_manager_topic()),
         routing_key=job_routing_key,
-        body=sign_and_seal(jdr).SerializeToString())
+        body=sign_and_seal(jda).SerializeToString())
 
 def jfr_decline_process(jfd, method=None, properties=None):
     # TODO This should not kill the JFR, but maybe it has a max_declines?
@@ -280,7 +280,7 @@ def job_queued_process(job_queued, method=None, properties=None):
             job_uuid = df.wfstep_dst.current_job.uuid.bytes
             job_routing_key = df.wfstep_dst.current_job.reply_to
 
-            send_job_data_ready(
+            send_job_data_available(
                 jp_key=jp_key, jp_value=jp_value, job_uuid=job_uuid,
                 job_routing_key=job_routing_key)
 
@@ -298,7 +298,7 @@ def job_queued_process(job_queued, method=None, properties=None):
         job_uuid = df.wfstep_dst.current_job.uuid.bytes
         job_routing_key = df.wfstep_dst.current_job.reply_to
 
-        send_job_data_ready(
+        send_job_data_available(
             jp_key=jp_key, jp_value=jp_value, job_uuid=job_uuid,
             job_routing_key=job_routing_key)
 
@@ -420,12 +420,12 @@ def workflow_create(wfc, method=None, properties=None):
         step.fulfill()
         step.save()
 
-def job_data_ready_process(jdr, method=None, properties=None):
-    print(f" [x] Received JobDataReady for : {to_uuid_obj(jdr.job_uuid)}")
-    uuid_obj=to_uuid_obj(jdr.job_uuid)
+def job_data_available_process(jda, method=None, properties=None):
+    print(f" [x] Received JobDataAvailable for : {to_uuid_obj(jda.job_uuid)}")
+    uuid_obj=to_uuid_obj(jda.job_uuid)
 
     params_recv = {}
-    for param in jdr.parameters:
+    for param in jda.parameters:
         params_recv[param.key] = param.value
 
     # It will come FROM the source job
@@ -441,7 +441,7 @@ def job_data_ready_process(jdr, method=None, properties=None):
                 job_uuid = df.wfstep_dst.current_job.uuid.bytes
                 job_routing_key = df.wfstep_dst.current_job.reply_to
 
-                send_job_data_ready(
+                send_job_data_available(
                     jp_key=jp_key, jp_value=jp_value, job_uuid=job_uuid,
                     job_routing_key=job_routing_key)
             else: # Workflow itself
@@ -461,7 +461,7 @@ callback_routes = {
     JobQueued: job_queued_process,
     JobStatusUpdate: job_status_update_process,
     WorkFlowCreate: workflow_create,
-    JobDataReady: job_data_ready_process,
+    JobDataAvailable: job_data_available_process,
 }
 
 def callback(ch, method, properties, body):

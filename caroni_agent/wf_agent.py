@@ -16,7 +16,7 @@ from gen.workflow_messages_pb2 import (
     JobStatus, JobFulfillmentRequest, JobFulfillmentDecline,
     JobFulfillmentOffer, Signature, Site, CaroniEnvelope,
     JobFulfillmentOfferAccept, JobQueued, JobStatusUpdate, JobStatusRequest,
-    JobDataReady, JobParameter, JobDataReady)
+    JobDataAvailable, JobParameter)
 
 import pika
 
@@ -163,11 +163,11 @@ def jsr_process(jsr, method=None, properties=None):
         routing_key=properties.reply_to,
         body=sign_and_seal(job_status_update).SerializeToString())
 
-def jdr_process(jdr, method=None, properties=None):
-    print(f"In JobDataReady!")
-    job = Job.objects.get(uuid=uuid.UUID(bytes=jdr.job_uuid))
+def jda_process(jda, method=None, properties=None):
+    print(f"In JobDataAvailable!")
+    job = Job.objects.get(uuid=uuid.UUID(bytes=jda.job_uuid))
 
-    for param in jdr.parameters:
+    for param in jda.parameters:
         job.deliver_input(name=param.key, value=param.value)
 
     if job.state == "queued": # We've gotten all of our inputs
@@ -190,10 +190,10 @@ def callback(ch, method, properties, body):
         jsr = JobStatusRequest()
         any_payload.Unpack(jsr)
         jsr_process(jsr, method=method, properties=properties)
-    elif any_payload.Is(JobDataReady.DESCRIPTOR):
-        jdr = JobDataReady()
-        any_payload.Unpack(jdr)
-        jdr_process(jdr, method=method, properties=properties)
+    elif any_payload.Is(JobDataAvailable.DESCRIPTOR):
+        jda = JobDataAvailable()
+        any_payload.Unpack(jda)
+        jda_process(jda, method=method, properties=properties)
     else:
         print("Unknown routing key")
 
@@ -298,7 +298,7 @@ while True:
             jp = JobParameter(
                 key=output.name,
                 value=output.value)
-            jdr = JobDataReady(
+            jda = JobDataAvailable(
                 signature=Signature(),
                 job_uuid=first_job.uuid.bytes,
                 parameters=[jp]) # TODO could collect and then send
@@ -306,4 +306,4 @@ while True:
                 exchange=caroni_exchange,
                 properties=pika.BasicProperties(reply_to=get_agent_topic()),
                 routing_key=first_job.reply_to,
-                body=sign_and_seal(jdr).SerializeToString())
+                body=sign_and_seal(jda).SerializeToString())

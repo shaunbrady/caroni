@@ -146,7 +146,7 @@ message WorkFlowCreate {  // Server gets wf.manager.fulfillment
   //ResponseMethod response_method = 4;
 }
 
-message JobDataReady {
+message JobDataAvailable {
   Signature signature = 1;
   bytes job_uuid = 2;
   repeated JobParameter parameters = 3;
